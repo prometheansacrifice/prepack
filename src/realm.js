@@ -174,6 +174,7 @@ export class Realm {
     this.errorHandler = opts.errorHandler;
 
     this.globalSymbolRegistry = [];
+    this._abstractValuesDefined = {};
   }
 
   start: number;
@@ -256,6 +257,7 @@ export class Realm {
   debuggerInstance: DebugServerType | void;
 
   nextGeneratorId: number = 0;
+  _abstractValuesDefined: { [string]: AbstractValue };
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -840,4 +842,20 @@ export class Realm {
     }
     return errorHandler(diagnostic);
   }
+
+  saveAbstractValue(abstractValue: AbstractValue): void {
+    // throw if for some reason a value already resides at the key?
+    const key: string = abstractValue.kind || '';
+    if (key === '') {
+      // throw type error?
+    }
+    this._abstractValuesDefined[
+      key
+    ] = abstractValue;
+  }
+
+  isNameStringUnique(kind: string): boolean {
+    return typeof this._abstractValuesDefined[kind] === 'undefined';
+  }
+
 }

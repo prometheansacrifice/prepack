@@ -86,7 +86,10 @@ export function createAbstract(
     let kind = "__abstract_" + realm.objectCount++; // need not be an object, but must be unique
     result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], kind);
   } else {
-    let kind = "__abstract_" + nameString; // assume name is unique TODO #1155: check this
+    let kind = "__abstract_" + nameString;
+    if (!realm.isNameStringUnique(nameString)) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "An abtract value with the same name exists");
+    }
     result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(nameString), type, [], kind);
     result.intrinsicName = nameString;
   }
@@ -100,5 +103,7 @@ export function createAbstract(
 
   if (additionalValues.length > 0)
     result = AbstractValue.createAbstractConcreteUnion(realm, result, ...additionalValues);
+
+  realm.saveAbstractValue(result);
   return result;
 }
