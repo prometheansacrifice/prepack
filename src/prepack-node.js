@@ -16,7 +16,7 @@ import { defaultOptions } from "./options";
 import { FatalError } from "./errors.js";
 import { type PrepackOptions } from "./prepack-options";
 import { getDebuggerOptions } from "./prepack-options";
-import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
+import { prepackNodeCLI, prepackNodeCLISync, prepackNodeEnvironment } from "./prepack-node-environment.js";
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
 import { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
@@ -106,7 +106,7 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
       console.error(`Does not support multiple file prepack in node-cli mode.`);
       process.exit(1);
     }
-    return prepackNodeCLISync(filenames[0], options);
+    return prepackNodeEnvironment(filenames[0], options);
   }
   const sourceFiles = filenames.map(filename => {
     let code = fs.readFileSync(filename, "utf8");
