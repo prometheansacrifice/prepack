@@ -21,7 +21,8 @@ import initializeGlobals from "./globals.js";
 import { getRealmOptions, getSerializerOptions } from "./prepack-options";
 import { FatalError } from "./errors.js";
 import initializeBootstrap from "./intrinsics/node/bootstrap.js";
-import initializeProcess from "./intrinsics/node/process.js";
+// import initializeProcess from "./intrinsics/node/process.js";
+import initializeProcessMine from "./intrinsics/node/process-mine.js";
 
 import type { PrepackOptions } from "./prepack-options";
 import { defaultOptions } from "./options";
@@ -120,7 +121,7 @@ export function prepackNodeEnvironment(filename: string, options: PrepackOptions
   let realm = construct_realm(getRealmOptions(options));
   initializeGlobals(realm);
 
-  let processObj = initializeProcess(realm, ["node", filename]);
+  let processObj = initializeProcessMine(realm, ["node", filename]);
   let bootstrapFn = initializeBootstrap(realm);
 
   let serializer = new Serializer(realm, getSerializerOptions(options));

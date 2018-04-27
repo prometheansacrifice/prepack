@@ -373,7 +373,8 @@ export default function(realm: Realm, processArgv: Array<string>): ObjectValue {
       case "constants":
         return constants;
       case "natives":
-        return natives;
+
+      return natives;
 
       // Built-in bindings
       case "contextify":
