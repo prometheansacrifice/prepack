@@ -12,12 +12,16 @@
 import type { Realm } from "../realm.js";
 import type { EnvironmentRecord } from "../environment.js";
 import type { PropertyKeyValue, IterationKind } from "../types.js";
+import { FatalError } from "../errors.js";
+// import { ValuesDomain } from "../domains/index.js";
+import buildExpressionTemplate from "../utils/builder.js";
 import {
   AbstractObjectValue,
   NativeFunctionValue,
   NullValue,
   BooleanValue,
   ArrayValue,
+  AbstractValue,
   ObjectValue,
   Value,
   StringValue,
@@ -572,10 +576,57 @@ export class CreateImplementation {
     } else {
       //   Else,
       // Let from be ! ToObject(source).
-      let from = To.ToObject(realm, source);
+      let from = To.ToObject(realm, source),
+        fromSnapshot;
 
       // Let keys be ? from.[[OwnPropertyKeys]]().
+      let from_was_partial = from.isPartialObject();
+      let to_must_be_partial = false;
+      if (from_was_partial) {
+        if (!target.isSimpleObject() || !from.isSimpleObject()) {
+          // If an object is not a simple object, it may have getters on it that can
+          // mutate any state as a result. We don't yet support this.
+          AbstractValue.reportIntrospectionError(source);
+          throw new FatalError();
+        }
+
+        to_must_be_partial = true;
+        // Make this temporarily not partial
+        // so that we can call frm.$OwnPropertyKeys below.
+        from.makeNotPartial();
+      }
       let keys = from.$OwnPropertyKeys();
+
+      // Not ready for merge. Any feedback on the approach (taken from Object.assign, would be helpful. Thank you :)
+      // ------------------ //
+
+      let delayedSource;
+      if (to_must_be_partial) {
+        // if (target instanceof AbstractObjectValue && target.values.isTop()) {
+        //   // We don't know which objects to make partial and making all objects partial is failure in itself
+        //   AbstractValue.reportIntrospectionError(target);
+        //   throw new FatalError();
+        // } else {
+
+        // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
+        if (target.hasStringOrSymbolProperties()) {
+          // preserve them in a snapshot and add the snapshot to the sources
+          delayedSource = target.getSnapshot({ removeProperties: true });
+        }
+
+        if (from_was_partial) {
+          if (from instanceof AbstractObjectValue && from.kind === "explicit conversion to object") {
+            // Make it implicit again since it is getting delayed into an Object.assign call.
+            delayedSource = from.args[0];
+          } else {
+            fromSnapshot = from.getSnapshot();
+            from.temporalAlias = fromSnapshot;
+            from.makePartial();
+            delayedSource = fromSnapshot;
+          }
+        }
+        // } L609
+      }
 
       //   Repeat for each element nextKey of keys in List order,
       for (let nextKey of keys) {
@@ -608,6 +659,45 @@ export class CreateImplementation {
           }
         }
       }
+
+      // ------------------ //
+
+      if (to_must_be_partial) {
+        // if to has properties, we copy and delay them (at this stage we do not need to remove them)
+        if (target.hasStringOrSymbolProperties()) {
+          let toSnapshot = target.getSnapshot();
+          delayedSource = toSnapshot;
+        }
+
+        target.makePartial();
+
+        // We already established above that to is simple,
+        // but now that it is partial we need to set the _isSimple flag.
+        target.makeSimple();
+
+        // Tell serializer that it may add properties to to only after temporalTo has been emitted
+        let temporalTo = AbstractValue.createTemporalFromTemplate(
+          realm,
+          buildExpressionTemplate("A"),
+          AbstractObjectValue, // ObjectValue?
+          [
+            // target,
+            delayedSource,
+          ]
+        );
+        console.log(Object.getPrototypeOf(temporalTo).constructor.name);
+        // invariant(temporalTo instanceof AbstractObjectValue);
+        temporalTo.values = delayedSource.values;
+        // if (target instanceof AbstractObjectValue) {
+        //   temporalTo.values = target.values;
+        // } else {
+        //   invariant(target instanceof ObjectValue);
+        //   temporalTo.values = new ValuesDomain(target);
+        // }
+        target.temporalAlias = temporalTo;
+      }
+
+      //------------------------//
     }
 
     // Return target.
