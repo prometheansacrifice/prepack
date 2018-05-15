@@ -14,10 +14,11 @@ import type { BabelNodeExpression } from "babel-types";
 import type { PreludeGenerator } from "./generator.js";
 import invariant from "../invariant.js";
 
+let plugins = ["objectRestSpread"];
 export default function buildExpressionTemplate(code: string): (void | PreludeGenerator) => any => BabelNodeExpression {
   let template;
   return (preludeGenerator: void | PreludeGenerator) => (obj: any): BabelNodeExpression => {
-    if (template === undefined) template = buildTemplate(code);
+    if (template === undefined) template = buildTemplate(code, { plugins });
     if (preludeGenerator !== undefined && code.includes("global"))
       obj = Object.assign(
         {

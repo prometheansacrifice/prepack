@@ -13,7 +13,8 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { AbstractValue, ConcreteValue, ObjectValue, StringValue } from "../values/index.js";
+import { AbstractValue, AbstractObjectValue, ConcreteValue, ObjectValue, StringValue } from "../values/index.js";
+import buildExpressionTemplate from "../utils/builder.js";
 import { IsAnonymousFunctionDefinition, HasOwnProperty } from "../methods/index.js";
 import { Create, Environment, Functions, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
@@ -120,13 +121,40 @@ export default function(
       // 2. Let fromValue be GetValue(exprValue).
       let fromValue = Environment.GetValue(realm, exprValue);
 
-      // 3. ReturnIfAbrupt(fromValue).
 
-      // 4. Let excludedNames be a new empty List.
-      let excludedNames = [];
 
-      // 4. Return ? CopyDataProperties(object, fromValue, excludedNames).
-      Create.CopyDataProperties(realm, obj, fromValue, excludedNames);
+
+      if (fromValue instanceof AbstractObjectValue) {
+
+      let temporalTarget = AbstractValue.createTemporalFromTemplate(
+          realm,
+          buildExpressionTemplate("A = { ...A, ...B }"),
+          AbstractValue,
+          [
+            obj,
+            fromValue
+          ]
+      );
+
+        obj.temporalAlias = temporalTarget;
+      } else {
+
+
+
+
+
+
+
+
+        // 3. ReturnIfAbrupt(fromValue).
+
+        // 4. Let excludedNames be a new empty List.
+        let excludedNames = [];
+
+        // 4. Return ? CopyDataProperties(object, fromValue, excludedNames).
+        Create.CopyDataProperties(realm, obj, fromValue, excludedNames);
+
+      }
     } else {
       invariant(prop.type === "ObjectMethod");
       Properties.PropertyDefinitionEvaluation(realm, prop, obj, (env: any), strictCode, true);
